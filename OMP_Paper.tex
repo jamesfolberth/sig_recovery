@@ -1,0 +1,105 @@
+\documentclass[12pt]{amsart}
+
+\usepackage{amsmath,amsfonts,amsthm,amssymb}
+\usepackage{setspace}
+\usepackage{Tabbing}
+\usepackage{fancyhdr}
+\usepackage{amscd}
+%\usepackage{bbold}
+\usepackage{graphicx}
+\usepackage[all]{xy}
+\usepackage[]{fontenc}
+\usepackage[latin1]{inputenc}
+\usepackage{chngpage}
+\usepackage{soul,color}
+\usepackage{upgreek}
+\usepackage{graphicx}
+
+\theoremstyle{plain}
+\newtheorem{thm}{Theorem}[section]
+  \theoremstyle{plain}
+  \newtheorem{prop}[thm]{Proposition}
+  \theoremstyle{plain}
+  \newtheorem{cor}[thm]{Corollary}
+  \theoremstyle{plain}
+  \newtheorem{lem}[thm]{Lemma}
+\theoremstyle{plain}
+  \newtheorem{rem}[thm]{Remark}
+\theoremstyle{plain}
+  \newtheorem{conj}[thm]{Conjecture}
+\theoremstyle{plain}
+  \newtheorem{defn}[thm]{Definition}
+\theoremstyle{plain}
+  \newtheorem{comment}[thm]{Comment}
+
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\s}{\textbf{\emph{s}}}
+\newcommand{\x}{\textbf{\emph{x}}}
+\newcommand{\ve}{\textbf{\emph{v}}}
+\newcommand{\arr}{\textbf{\emph{r}}}
+\newcommand{\ay}{\textbf{\emph{a}}}
+\newcommand{\vectornorm}[1]{\left|\left|#1\right|\right|}
+
+
+\newcommand{\tevisproof}{\blacksquare}
+
+\begin{document}
+
+\title{Orthogonal Matching Pursuit Algorithm for Sparse Signal Recovery}
+\author{J. Folberth and E. Yasutake}
+\date{\today}
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\tableofcontents
+
+\section{Introduction}
+
+\subsection{Purpose of the Project}
+The main goal of this paper is to discuss and replicate the results from ``Signal Recovery from Random Measurements via Orthogonal Matching Pursuit" (Tropp,Gilbert, 2007).  We also explored a few cases that the paper does not explore on our own.  
+
+\subsection{Introduction}
+Suppose that have an unknown vector $\s\in\R^d$ that has $m$ nonzero elements where, in most applications, $m<<d$.  Our goal is to recover $\s$ with a sequence of \emph{measurement vectors} $\{\x_i\}_{i=1}^N\subset\R^d$ such that we know the values 
+	$$\langle \s,\x_i\rangle \hspace{0.2in} i=1,\ldots N.$$ 
+There are two main questions involved with this type of problem:
+	\begin{enumerate}
+		\item What value of $N$ would one need to recover $\s$?
+		\item What algorithms can we use to recover $\s$?\\
+	\end{enumerate}
+To answer the first of these questions, it's clear that we would want at least $m$ measurement vectors, or else we would have an underdetermined system.  On the other hand, simply taking any basis, such as the canonical basis, in $\R^d$ is sufficient.  However, it turns out that we can do much better than this. \\
+
+The latter question has many answers.  In this paper, we will work with an algorithm called Orthogonal Matching Pursuit (OMP).  There are a number of algorithms that have been developed for this problem.
+
+	
+\subsection{Algorithm}
+
+Once we fix the number, $N$, of measurement vectors we want, the idea is to choose a subset of these measurement vectors to recover the signal $\s$.  This can be done by first taking the measurement vectors $\{\x_i\}_{i=1}^N$ and forming an $N\times d$ matrix $\Phi$.  The rows of $\Phi$ are the measurement vectors.  We will henceforth denote the columns by $\{\varphi_i\}_{i=1}^d$.  We can then collect the measurements $\langle \s,\x_i\rangle$ into a vector $\ve$, which leads to the system of equations$\ve=\Phi \s$.  The goal of OMP is to determine which columns of $\Phi$ are necessary for the matrix equation.  OMP does this in a greedy fashion by choosing the columns of $\Phi$ which are most stonrgly correlated to the remaining parts of $\ve$.  The below algorithm explains the full OMP method.\\\\
+
+\begin{enumerate}
+	\item Fix an $N\times d$ matrix $\Phi$, $\ve\in\R^d$, and sparsity level $m$.
+	\item Initialize the residual $\arr_0=\ve$, index set $\Lambda_0=\emptyset$, and counter $t=1$.
+	\item Find 
+		$$\lambda_t=argmax_{j=1,\ldots, d} \left|\langle \arr_{t-1},\phi_j\rangle\right|$$
+	\item Set $\Lambda_t=\Lambda_{t-1}\cup\{\lambda_t\}$ and $\Phi_t = [\Phi_{t-1} \phi_{\lambda_t}]$ where $\Phi_0$ is an empty matrix.
+	\item Solve the least squares problem 
+		$$x_t=argmin_\x \vectornorm{\ve-\Phi_t\x}_2.$$
+	\item Calculate the $t$th approximation to $\ve$ and residual via
+		\begin{align*}
+			&\ay_t=\Phi_t\x_t\\
+			&\arr_t=\ve-\ay_t.
+		\end{align*}
+	\item So long as $t<m$, return to Step 2.
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Applications}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Further Extensions}
+\subsection{Implement QR via insertion}
+MATLAB SUCKS, MUWAHAHAHAHA!
+
+
+\end{document}
