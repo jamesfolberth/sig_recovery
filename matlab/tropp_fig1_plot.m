@@ -35,9 +35,9 @@ function [] = tropp_fig1_plot(matfile)
 % default savefile
 if (nargin == 0)
    if strcmp(computer(),'GLNXA64')
-      matfile = 'tropp_fig1_data_glnx64.mat';
+      matfile = '../data/tropp_fig1_data_glnx64.mat';
    elseif strcmp(computer(),'MACI64')
-      matfile = 'tropp_fig1_data_mac64.mat';
+      matfile = '../data/tropp_fig1_data_mac64.mat';
    else
       error('tropp_fig1_plot: default file not found!');
    end
