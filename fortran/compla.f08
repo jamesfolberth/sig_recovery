@@ -405,6 +405,23 @@ module compla
    
    end subroutine apply_perm_vector
 
+   
+   subroutine apply_perm_vector_rnk1(A,p,trans)
+      real (kind=8) :: A(:)
+      integer (kind=4) :: p(:), trans
+
+      ! ``compute'' P*
+      if (trans == 0 ) then
+         A(:) = A(p)
+ 
+      ! `` compute P'*A
+      else
+         A(p) = A(:) 
+
+      end if
+   
+   end subroutine apply_perm_vector_rnk1
+
 
    subroutine form_LU(A,L,U)
       real (kind=8) :: A(:,:), L(:,:), U(:,:)
@@ -696,7 +713,7 @@ module compla
    !!!!!!!!!!!!!!!!!!
    ! {{{
    subroutine back_solve(U,b)
-      real (kind=8) :: U(:,:), b(:,:)
+      real (kind=8) :: U(:,:), b(:)
       integer (kind=4) :: i,j,Nc
 
       ! call check_square(U)
@@ -711,16 +728,16 @@ module compla
             stop
          end if
 
-         b(j,1) = b(j,1)/U(j,j)
+         b(j) = b(j)/U(j,j)
          col: do i=j-1,1,-1
-            b(i,1)=b(i,1) - U(i,j)*b(j,1)
+            b(i)=b(i) - U(i,j)*b(j)
          end do col
       end do row
 
    end subroutine back_solve
 
    subroutine back_solve_blk(U,b)
-      real (kind=8) :: U(:,:), b(:,:)
+      real (kind=8) :: U(:,:), b(:)
 
       integer (kind=4), parameter :: blk_size=8
       integer (kind=4) :: i,j,s,Nc
@@ -742,7 +759,7 @@ module compla
                jh = Nc-blk_size*(j-2)
                !print *, "subtract block: ", il,ih,jl,jh
                
-               b(il:ih,1) = b(il:ih,1) - matmul(U(il:ih,jl:jh),b(jl:jh,1))
+               b(il:ih) = b(il:ih) - matmul(U(il:ih,jl:jh),b(jl:jh))
 
             end do col_blk
 
@@ -753,7 +770,7 @@ module compla
             jh = Nc-blk_size*(j-2)
             !print *, "subtract top block: ", il,ih,jl,jh
 
-            b(il:ih,1) = b(il:ih,1) - matmul(U(il:ih,jl:jh),b(jl:jh,1))
+            b(il:ih) = b(il:ih) - matmul(U(il:ih,jl:jh),b(jl:jh))
 
          end if
 
@@ -762,7 +779,7 @@ module compla
          jh = Nc-blk_size*(j-1)
          !print *, "back_solve: ",jl,jh
 
-         call back_solve(U(jl:jh,jl:jh),b(jl:jh,:))
+         call back_solve(U(jl:jh,jl:jh),b(jl:jh))
 
       end do blk
 
@@ -774,7 +791,7 @@ module compla
          jh = Nc-blk_size*(s-1)
          !print *, "subtract final top block: ", il,ih,jl,jh
          
-         b(il:ih,1) = b(il:ih,1) - matmul(U(il:ih,jl:jh),b(jl:jh,1))
+         b(il:ih) = b(il:ih) - matmul(U(il:ih,jl:jh),b(jl:jh))
       end if
 
       ! Finish with regular back solve
@@ -785,9 +802,9 @@ module compla
             stop
          end if
 
-         b(j,1) = b(j,1)/U(j,j)
+         b(j) = b(j)/U(j,j)
          col_fin: do i=j-1,1,-1
-            b(i,1)=b(i,1) - U(i,j)*b(j,1)
+            b(i)=b(i) - U(i,j)*b(j)
          end do col_fin
       end do row_fin
 
@@ -795,7 +812,7 @@ module compla
 
    
    subroutine for_solve(L,b)
-      real (kind=8) :: L(:,:), b(:,:)
+      real (kind=8) :: L(:,:), b(:)
       integer (kind=4) :: i,j,Nc
 
       ! call check_square(L)
@@ -810,9 +827,9 @@ module compla
             stop
          end if
 
-         b(j,1) = b(j,1)/L(j,j)
+         b(j) = b(j)/L(j,j)
          col: do i=j+1,Nc
-            b(i,1)=b(i,1) - L(i,j)*b(j,1) 
+            b(i)=b(i) - L(i,j)*b(j) 
          end do col
       end do row
 
@@ -822,7 +839,7 @@ module compla
    ! that the main diagonal of L is filled with ones 
    ! expected input is A, overwritten with L,U from LU decomp.
    subroutine for_solve_lu(L,b)
-      real (kind=8) :: L(:,:), b(:,:)
+      real (kind=8) :: L(:,:), b(:)
       integer (kind=4) :: i,j,Nc
 
       ! call check_square(L)
@@ -841,14 +858,14 @@ module compla
 
          !b(j,1) = b(j,1)/L(j,j) 
          col: do i=j+1,Nc
-            b(i,1)=b(i,1) - L(i,j)*b(j,1) 
+            b(i)=b(i) - L(i,j)*b(j) 
          end do col
       end do row
 
    end subroutine for_solve_lu
 
    subroutine for_solve_blk(L,b)
-      real (kind=8) :: L(:,:), b(:,:)
+      real (kind=8) :: L(:,:), b(:)
 
       integer (kind=4), parameter :: blk_size=8
       integer (kind=4) :: i,j,s,Nc
@@ -872,7 +889,7 @@ module compla
                jh = blk_size*(j-1)
                ! print *, il,ih,jl,jh
                
-               b(il:ih,1) = b(il:ih,1) - matmul(L(il:ih,jl:jh),b(jl:jh,1))
+               b(il:ih) = b(il:ih) - matmul(L(il:ih,jl:jh),b(jl:jh))
 
             end do col_blk
 
@@ -883,7 +900,7 @@ module compla
             jh = blk_size*(j-1)
             ! print *, il,ih,jl,ih
 
-            b(il:ih,1) = b(il:ih,1) - matmul(L(il:ih,jl:jh),b(jl:jh,1))
+            b(il:ih) = b(il:ih) - matmul(L(il:ih,jl:jh),b(jl:jh))
 
          end if
  
@@ -891,7 +908,7 @@ module compla
          jl = blk_size*(j-1)+1
          jh = blk_size*j
 
-         call for_solve(L(jl:jh,jl:jh), b(jl:jh,:))
+         call for_solve(L(jl:jh,jl:jh), b(jl:jh))
 
       end do blk
 
@@ -902,7 +919,7 @@ module compla
          jl = blk_size*(s-1)+1
          jh = blk_size*s
 
-         b(il:ih,1) = b(il:ih,1) - matmul(L(il:ih,jl:jh),b(jl:jh,1))
+         b(il:ih) = b(il:ih) - matmul(L(il:ih,jl:jh),b(jl:jh))
       end if
 
       ! Finish up with regular forward subs
@@ -914,9 +931,9 @@ module compla
             stop
          end if
 
-         b(j,1) = b(j,1)/L(j,j)
+         b(j) = b(j)/L(j,j)
          col_fin: do i=j+1,Nc
-            b(i,1)=b(i,1) - L(i,j)*b(j,1) 
+            b(i)=b(i) - L(i,j)*b(j) 
          end do col_fin
       end do row_fin
 
@@ -925,7 +942,7 @@ module compla
    ! This is the same as for_solve_blk, except that is assumes ones along the main diagonal of L
    ! Use this routine for L,U overwritten on A
    subroutine for_solve_lu_blk(L,b)
-      real (kind=8) :: L(:,:), b(:,:)
+      real (kind=8) :: L(:,:), b(:)
 
       integer (kind=4), parameter :: blk_size=8
       integer (kind=4) :: i,j,s,Nc
@@ -949,7 +966,7 @@ module compla
                jh = blk_size*(j-1)
                ! print *, il,ih,jl,jh
                
-               b(il:ih,1) = b(il:ih,1) - matmul(L(il:ih,jl:jh),b(jl:jh,1))
+               b(il:ih) = b(il:ih) - matmul(L(il:ih,jl:jh),b(jl:jh))
 
             end do col_blk
 
@@ -960,7 +977,7 @@ module compla
             jh = blk_size*(j-1)
             ! print *, il,ih,jl,ih
 
-            b(il:ih,1) = b(il:ih,1) - matmul(L(il:ih,jl:jh),b(jl:jh,1))
+            b(il:ih) = b(il:ih) - matmul(L(il:ih,jl:jh),b(jl:jh))
 
          end if
  
@@ -970,7 +987,7 @@ module compla
 
          ! XXX this should be the only difference between
          !     for_solve_blk and for_solve_lu_blk
-         call for_solve_lu(L(jl:jh,jl:jh), b(jl:jh,:))
+         call for_solve_lu(L(jl:jh,jl:jh), b(jl:jh))
 
       end do blk
 
@@ -981,7 +998,7 @@ module compla
          jl = blk_size*(s-1)+1
          jh = blk_size*s
 
-         b(il:ih,1) = b(il:ih,1) - matmul(L(il:ih,jl:jh),b(jl:jh,1))
+         b(il:ih) = b(il:ih) - matmul(L(il:ih,jl:jh),b(jl:jh))
       end if
 
       ! Finish up with regular forward subs
@@ -994,16 +1011,16 @@ module compla
          !   stop
          !end if
 
-         b(j,1) = b(j,1) ! L(j,j)=1
+         b(j) = b(j) ! L(j,j)=1
          col_fin: do i=j+1,Nc
-            b(i,1)=b(i,1) - L(i,j)*b(j,1) 
+            b(i)=b(i) - L(i,j)*b(j) 
          end do col_fin
       end do row_fin
 
    end subroutine for_solve_lu_blk
 
    subroutine fb_solve_chol(A,b,x)
-      real (kind=8) :: A(:,:), b(:,:), x(:,:)
+      real (kind=8) :: A(:,:), b(:), x(:)
       real (kind=8), allocatable :: wrk(:,:)
       integer (kind=4) :: Nr,Nc
 
@@ -1027,7 +1044,7 @@ module compla
    end subroutine fb_solve_chol
 
    subroutine fb_solve_blk_chol(A,b,x)
-      real (kind=8) :: A(:,:), b(:,:), x(:,:)
+      real (kind=8) :: A(:,:), b(:), x(:)
       real (kind=8), allocatable :: wrk(:,:)
       integer (kind=4) :: Nr,Nc
 
@@ -1055,7 +1072,7 @@ module compla
    ! I'd probably want to use the block routine
    subroutine fb_solve_lu(A,b,x,pvec)
       ! A is assumed to be a ``work array''
-      real (kind=8) :: A(:,:), b(:,:), x(:,:)
+      real (kind=8) :: A(:,:), b(:), x(:)
       integer (kind=4), allocatable, intent(out), optional :: pvec(:)
 
       integer (kind=4) :: Nr,Nc,i
@@ -1075,7 +1092,7 @@ module compla
       call apply_perm_vector(A,p,0) ! now make L,U triangular in memory
 
       x = b
-      call apply_perm_vector(x,p,0) ! permute b ( PAx = LUx = Pb )
+      call apply_perm_vector_rnk1(x,p,0) ! permute b ( PAx = LUx = Pb )
  
       call for_solve_lu(A,x)
       call back_solve(A,x)
@@ -1087,7 +1104,7 @@ module compla
    subroutine fb_solve_blk_lu(A,b,x,pvec)
       ! A is assumed to be a ``work array''
       ! pvec is optional argument to output permutation vector
-      real (kind=8) :: A(:,:), b(:,:), x(:,:)
+      real (kind=8) :: A(:,:), b(:), x(:)
       integer (kind=4), allocatable, intent(out), optional :: pvec(:)
 
       integer (kind=4) :: Nr,Nc,i
@@ -1107,7 +1124,7 @@ module compla
       call apply_perm_vector(A,p,0)
 
       x = b
-      call apply_perm_vector(x,p,0) ! permute b
+      call apply_perm_vector_rnk1(x,p,0) ! permute b
 
       call for_solve_lu_blk(A,x)
       call back_solve_blk(A,x)
@@ -1229,7 +1246,7 @@ module compla
       integer (kind=4), optional :: Tin
 
       real (kind=8) :: condest_lu, temp
-      real (kind=8), allocatable :: w(:,:), w_temp(:,:)
+      real (kind=8), allocatable :: w(:), w_temp(:)
       integer (kind=4) :: T,i
 
       T = 2
@@ -1239,10 +1256,10 @@ module compla
 
       ! Try to estimate \|A^{-1}w\|_1 / \|w\|_1
       do i=1,T
-         w = rand_mat(size(A,2),1)
+         w = rand_vec(size(A,2))
          w_temp = w
 
-         call apply_perm_vector(w_temp,pvec,0)
+         call apply_perm_vector_rnk1(w_temp,pvec,0)
          call for_solve_lu_blk(wrk,w_temp)
          call back_solve_blk(wrk,w_temp)
          

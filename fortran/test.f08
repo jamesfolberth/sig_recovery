@@ -31,7 +31,7 @@ program test
    !call test_fb_solve_blk_lu(100)
 
    ! Test matrix condition number
-   !call test_condest_lu()
+   !call test_condest_lu(100)
 
    ! Test QR decomp by reflectors
    !call test_qr(1500,1325)
@@ -194,7 +194,7 @@ program test
          ! {{{
          integer (kind=4), intent(in) :: N
          real (kind=8), allocatable :: A(:,:), wrk(:,:)
-         real (kind=8), allocatable :: b(:,:), x(:,:)
+         real (kind=8), allocatable :: b(:), x(:), y(:)
 
          print *,
          print *, "Testing fb_solve_chol:"
@@ -205,7 +205,7 @@ program test
          if (allocated(x)) deallocate(x)
          if (allocated(wrk)) deallocate(wrk)
          A = rand_spd_mat(N)
-         b = rand_mat(N,1)
+         b = rand_vec(N)
          x = b
 
          ! manual test of for_solve(), back_solve()
@@ -247,13 +247,16 @@ program test
       
          call fb_solve_chol(A,b,x)
          !call print_array(x)
-      
-         x = matmul(A,x)-b
+    
+         ! y <- A*x
+         allocate(y(N))
+         call dgemv('N',N,N,1.0_dblk,A,N,x,1,0.0_dblk,y,1)
+         x = y-b ! residual
        
          print *, "2-norm of residual vector = ", norm_p(x,2)
          !call print_array(x)
 
-         deallocate(A,b,x)
+         deallocate(A,b,x,y)
 
       end subroutine test_fb_solve_chol
       ! }}}
@@ -263,7 +266,7 @@ program test
          ! {{{
          integer (kind=4), intent(in) :: N
          real (kind=8), allocatable :: A(:,:)
-         real (kind=8), allocatable :: b(:,:), x(:,:)
+         real (kind=8), allocatable :: b(:), x(:), y(:)
 
          !real (kind=8), allocatable :: R(:,:), Rt(:,:)
 
@@ -272,7 +275,7 @@ program test
          print *, "Number of rows: ",N
  
          A = rand_spd_mat(N)
-         b = rand_mat(N,1)
+         b = rand_vec(N)
          x = b ! just allocating x
 
          ! manual test of for_solve_blk(), back_solve_blk()
@@ -310,8 +313,11 @@ program test
       
          call fb_solve_blk_chol(A,b,x)
          !call print_array(x)
-      
-         x = matmul(A,x)-b
+ 
+         ! y <- A*x
+         allocate(y(N))
+         call dgemv('N',N,N,1.0_dblk,A,N,x,1,0.0_dblk,y,1)
+         x = y-b ! residual
        
          print *, "2-norm of residual vector = ", norm_p(x,2)
          !call print_array(x)
@@ -408,7 +414,7 @@ program test
          ! {{{
          integer (kind=4), intent(in) :: N
          real (kind=8), allocatable :: A(:,:),wrk(:,:)
-         real (kind=8), allocatable :: b(:,:), x(:,:)
+         real (kind=8), allocatable :: b(:), x(:), y(:)
          integer (kind=4), allocatable :: p(:)
 
          print *,
@@ -417,13 +423,16 @@ program test
  
          A = rand_mat(N,N)
          wrk = A
-         b = rand_mat(N,1)
+         b = rand_vec(N)
          x = b ! just allocating x
 
          call fb_solve_lu(wrk,b,x,p)
          !call print_array(x)
-      
-         x = matmul(A,x)-b
+    
+         ! x <- A*x-b
+         allocate(y(N))
+         call dgemv('N',N,N,1.0_dblk,A,N,x,1,0.0_dblk,y,1)
+         x = y-b ! residual
        
          print *, "2norm of residual vector = ", norm_p(x,2)
          print *, "1 norm condition number = ", condest_lu(A,wrk,p)
@@ -431,7 +440,7 @@ program test
  
          !call print_array(x)
 
-         deallocate(A,b,x)
+         deallocate(A,b,x,y)
 
       end subroutine test_fb_solve_lu
       ! }}}
@@ -441,7 +450,7 @@ program test
          ! {{{
          integer (kind=4), intent(in) :: N
          real (kind=8), allocatable :: A(:,:), wrk(:,:)
-         real (kind=8), allocatable :: b(:,:), x(:,:)
+         real (kind=8), allocatable :: b(:), x(:), y(:)
          integer (kind=4), allocatable :: p(:)
 
          !real (kind=8), allocatable :: R(:,:), Rt(:,:)
@@ -452,55 +461,60 @@ program test
  
          A = 2d0*rand_mat(N,N)-1d0
          wrk = A
-         b = rand_mat(N,1)
+         b = rand_vec(N)
          x = b ! just allocating x
          
          call fb_solve_blk_lu(wrk,b,x,p)
          !call print_array(x)
       
-         x = matmul(A,x)-b
+         ! x <- A*x-b
+         allocate(y(N))
+         call dgemv('N',N,N,1.0_dblk,A,N,x,1,0.0_dblk,y,1)
+         x = y-b ! residual
+ 
        
          print *, "2 norm of residual vector = ", norm_p(x,2)
          print *, "1 norm condition number = ", condest_lu(A,wrk,p)
          print *, "1 norm relative error = ", condest_lu(A,wrk,p)*norm_p(x,1)/norm_p(b,1)
          !call print_array(x)
 
-         deallocate(A,b,x)
+         deallocate(A,b,x,y)
 
       end subroutine test_fb_solve_blk_lu
       ! }}}
 
 
-      subroutine test_condest_lu()
+      subroutine test_condest_lu(N)
          ! {{{
-         !integer (kind=4), intent(in) :: N
+         integer (kind=4), intent(in) :: N
 
          real (kind=8), allocatable :: A(:,:),wrk(:,:)
          integer (kind=4), allocatable :: p(:)
-         !integer (kind=4) :: i
+         integer (kind=4) :: i
 
          print *,
          print *, "Testing condest_lu:"
  
          ! test matrix
          ! K(A) = 1197.
-         allocate(A(2,2))
-         A(:,1) = (/ 1d0, -0.99d0 /)
-         A(:,2) = (/ -2d0, 1.99d0 /)
-         allocate(p(2))
-         p = (/ 1,2 /)
+         !allocate(A(2,2))
+         !A(:,1) = (/ 1d0, -0.99d0 /)
+         !A(:,2) = (/ -2d0, 1.99d0 /)
+         !allocate(p(2))
+         !p = (/ 1,2 /)
+         !wrk = A
+         !call lu(wrk,p)
+         !call apply_perm_vector(wrk,p,0)
+
+         A = 2d0*rand_mat(N,N)-1d0
          wrk = A
+         allocate(p(N))
+         p = (/ (i,i=1,N) /)
          call lu(wrk,p)
          call apply_perm_vector(wrk,p,0)
 
-         !A = 2d0*rand_mat(N,N)-1d0
-         !wrk = A
-         !allocate(p(N))
-         !p = (/ (i,i=1,N) /)
-         !call lu(wrk,p)
-
-         print *, "Condition number should be 1197"
-         print *, condest_lu(A,wrk,p)
+         !print *, "Condition number should be 1197" ! only for 2x2 system
+         print *, "Condition number (est): ", condest_lu(A,wrk,p)
 
       end subroutine test_condest_lu
       ! }}}
