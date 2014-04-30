@@ -36,10 +36,15 @@ program test
    ! Test QR decomp by reflectors
    !call test_qr(1500,1325)
    !call test_qr(150,132)
+   !call test_qr(100,1)
+
+   ! Test QR insert
+   call test_qrinsertcol(100,1)
+   !call test_qrinsertcol(5,3)
 
    ! Time dgemm from whichever BLAS implementation you linked with
    !call time_dgemm(5000)
-   call time_dgemm(1000)
+   !call time_dgemm(1000)
 
    ! Test saving data to HDF5 file
    !call test_save_stuff(10)
@@ -601,6 +606,78 @@ program test
 
    
       end subroutine test_qr
+      ! }}}
+
+
+      subroutine test_qrinsertcol(Nr,Nc) 
+         ! {{{ 
+         integer (kind=4), intent(in) :: Nr,Nc
+         real (kind=8), allocatable :: A(:,:), Q(:,:), R(:,:) 
+         real (kind=8), allocatable :: A_ref(:,:), Q_ref(:,:), R_ref(:,:) 
+         real (kind=8), allocatable :: wrk(:,:), wrk2(:,:)
+         real (kind=8), allocatable :: x(:),x2(:),b(:),b2(:)
+
+         real (kind=8) :: t_0, t_1
+
+         if ( Nc > Nr ) then
+            stop('test_qrinsertcol_Q: number of cols shouldn''t be greater than number of rows')
+         end if
+
+         print *,
+         print *, "Testing qrinsertcol_Q:"
+         print *, "Size: ",Nr,"x ",Nc
+ 
+
+         ! Set up system and RHS
+         allocate(Q(Nr,Nr),R(Nr,Nc),Q_ref(Nr,Nr),R_ref(Nr,Nc))
+         allocate(x(Nc),b(Nr),b2(Nr))
+         A = 2d0*rand_mat(Nr,Nc)-1d0
+         A_ref = A
+         x = 2d0*rand_vec(Nc)-1d0
+         x2 = x
+         call dgemv('N',Nr,Nc,1.0_dblk,A,Nr,x,1,0.0_dblk,b,1)
+         b2 = b
+        
+         ! Solve with QR
+         wrk = A
+         call qr_blas(wrk,b)
+         call form_qr(wrk,Q_ref,R_ref)
+         x = b
+         !call back_solve_blk(R_ref,x)
+
+         ! Solve with QR insert for Nc=1
+         if ( Nc == 1 ) then
+            wrk2 = A
+            call qrinsertcol(R,1,A(:,1),b2)
+            x2 = b2
+            !call back_solve_blk(R,x2)
+            print *, "SPECIAL CASE: Nc = 1"
+            print *, "Inf norm of x-x2: ",norm_p(x-x2,0)
+            return
+         end if
+
+
+         !wrk = A
+         !call cpu_time(t_0)
+         !!call qr(wrk,b2)
+         !call qr_blas(wrk)
+         !call cpu_time(t_1)
+         !!call print_array(wrk)
+         !!x(:,1) = b2(:)
+
+         !call form_qr(wrk,Q,R)
+         !!call print_array(Q)
+         !!call print_array(R)
+         !!wrk = A-matmul(Q,R)
+         !wrk2 = A
+         !call dgemm('N','N',Nr,Nc,Nr,-1d0,Q,Nr,R,Nr,1d0,wrk2,Nr)
+         !print *, "qr time: ",t_1-t_0," CPU seconds"
+         !print *, "1 norm of A-Q*R: ", norm_p(wrk2,1)
+
+         !b2 = b
+         !wrk = A
+
+      end subroutine test_qrinsertcol
       ! }}}
 
 

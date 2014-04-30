@@ -37,9 +37,8 @@ module compla
                        dwrite_dset_rank2, dwrite_dset_rank0
    end interface write_dset
 
-   ! BLAS
+   ! BLAS interface
    integer (kind=intk), external :: idamax
-
 
    contains
 
@@ -644,6 +643,54 @@ module compla
    ! }}}
 
 
+   !!!!!!!!!!!!!!!!!
+   ! QR Insert Col !
+   !!!!!!!!!!!!!!!!!
+   ! {{{
+   ! Update QR and RHS after appending a column to A
+   ! this is a special case of QR insert
+   ! Note that we don't form Q
+   subroutine qrinsertcol(R,insert_ind,col,bin)
+      real (kind=dblk), intent(inout) :: R(:,:),col(:)
+      real (kind=dblk), intent(inout), optional :: bin(:)
+      integer (kind=intk) :: insert_ind
+
+      real (kind=dblk), allocatable :: b(:)
+      integer (kind=intk) :: Q_m,Q_n,m,n
+
+      ! used for adding col to empty matrix (call qr_blas)
+      real (kind=dblk), allocatable :: wrk(:,:),Q_wrk(:,:),R_wrk(:,:)
+
+      m = size(R,1)
+      n = size(R,2)
+
+      ! bin is the RHS of a linear system Ax=b
+      allocate(b(n))
+      if (present(bin)) then
+         b = bin
+      else 
+         b = 0_dblk
+      end if
+
+      ! Do QR on a vector (appending col to empty matrix)
+      if ( insert_ind == 1 ) then
+         allocate(wrk(m,1))
+         wrk(:,1) = col(:)
+         call qr_blas(wrk,b)
+         R(1,1) = wrk(1,1)
+         R(2:m,1) = 0.0_dblk
+         deallocate(wrk)
+         return
+      end if
+
+      if ( present(bin) ) bin = b
+
+   end subroutine qrinsertcol
+
+
+   ! }}}
+
+      
    !!!!!!!!!!!!!!!!!!
    ! For/Back Solve !
    !!!!!!!!!!!!!!!!!!
@@ -1330,6 +1377,22 @@ module compla
          end do col
       end do row
    end function rand_mat
+
+   function rand_vec(N)
+      integer (kind=4), intent(in) :: N
+      real (kind=8), allocatable :: rand_vec(:)
+
+      real (kind=8) :: rand
+      integer (kind=4) :: i
+
+      allocate(rand_vec(N))
+
+      ! Populate with random numbers [0,1]
+      do i=1,N
+         call random_number(rand)
+         rand_vec(i) = rand
+      end do
+   end function rand_vec
 
    function rand_spd_mat(N)
       integer (kind=4), intent(in) :: N
