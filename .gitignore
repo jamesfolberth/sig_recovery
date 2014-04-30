@@ -1,2 +1,6 @@
 .trash
 *.mat*
+*.o
+*.mod
+fortran/test
+data/*
