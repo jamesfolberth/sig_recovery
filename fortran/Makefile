@@ -24,5 +24,5 @@ test: test.f08 compla.o force
 force:
 
 clean:
-	rm -f test save_stuff.h5
-	rm -f *.o *.mod *.out *.a
+	rm -f test
+	rm -f *.o *.mod *.out *.a *.h5

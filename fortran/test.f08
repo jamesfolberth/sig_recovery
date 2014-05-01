@@ -51,10 +51,10 @@ program test
    !call test_save_stuff(10)
 
    ! Test randnrml
-   call test_randnrml(10000)
+   !call test_randnrml(10000)
 
    ! Test mvnrml_rand_mat
-   !call test_mvnrml_rand_mat(10,5)
+   call test_mvnrml_rand_mat(1000,300)
  
   
    ! {{{
@@ -708,13 +708,22 @@ program test
       ! }}}
 
 
-      subroutine save_stuff(savefile,vec,array)
+      subroutine test_save_stuff(N)
       ! {{{
-         character (len=*) :: savefile
-         real (kind=8) :: vec(:),array(:,:)
+         integer (kind=4), intent(in) :: N
 
+         real (kind=8), allocatable :: vec(:),array(:,:)
+
+         character (len=255) :: savefile
          integer (kind=intk) :: h5error, file_id
-   
+
+         print *,
+         print *, "Testing HDF5:"
+ 
+         array = rand_mat(N,N)
+         vec = array(:,1)
+
+         savefile = "save_stuff.h5"
          call h5open_f(h5error)
          call h5fcreate_f(savefile, H5F_ACC_TRUNC_F, file_id, h5error)
 
@@ -723,23 +732,6 @@ program test
 
          call h5fclose_f(file_id,h5error)
          call h5close_f(h5error)
-
-      end subroutine save_stuff
-      ! }}}
-
-      subroutine test_save_stuff(N)
-      ! {{{
-         integer (kind=4), intent(in) :: N
-
-         real (kind=8), allocatable :: vec(:),array(:,:)
-
-         print *,
-         print *, "Testing HDF5:"
- 
-         array = rand_mat(N,N)
-         vec = array(:,1)
-
-         call save_stuff("save_stuff.h5",vec,array)
 
          print *, "Executing: octave --quiet --eval ""load(''save_stuff.h5'');array,transpose(vec)"""
          ! /usr/bin/sh has the following quotes (and more)
@@ -782,7 +774,7 @@ program test
          call h5close_f(h5error)
  
          deallocate(vec)
-
+      
       end subroutine test_randnrml
       ! }}}
      
@@ -792,14 +784,30 @@ program test
          integer (kind=intk) :: Nr,Nc
 
          real (kind=dblk), allocatable :: A(:,:)
-         real (kind=dblk) :: mu, Sigma
-         
+         real (kind=dblk) :: mu, sigma
+
+         character (len=255) :: savefile
+         integer (kind=intk) :: h5error, file_id
+
          allocate(A(Nr,Nc))
-         call mvnrml_rand_mat(A,mu,Sigma)
+         mu = 10
+         sigma = 10 ! variance
+         call mvnrml_rand_mat(A,mu,sigma)
+
+         ! Save to ./test_mvnrml_rand_mat.h5
+         ! open with octave/matlab and run hist(A(:),100)
+         ! should look like N(0,1^2)
+         savefile = "test_mvnrml_rand_mat.h5"
+         call h5open_f(h5error)
+         call h5fcreate_f(savefile, H5F_ACC_TRUNC_F, file_id, h5error)
+    
+         call write_dset(file_id, A, "A")
+    
+         call h5fclose_f(file_id,h5error)
+         call h5close_f(h5error)
 
       end subroutine test_mvnrml_rand_mat
       ! }}}
-
 
 
 end program test

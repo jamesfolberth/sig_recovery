@@ -664,7 +664,7 @@ module compla
    subroutine form_qr(A,Q,R)
       real (kind=8) :: A(:,:), Q(:,:), R(:,:)
 
-      integer (kind=4) :: Nr,Nc,j,k,i
+      integer (kind=4) :: Nr,Nc,j,k
       real (kind=8), allocatable :: u(:),temp(:)
       real (kind=8) :: gamm
 
@@ -1463,7 +1463,6 @@ module compla
    
    end subroutine randnrml
 
-
    function rand_mat(Nr,Nc)
       integer (kind=4), intent(in) :: Nr, Nc
       real (kind=8), allocatable :: rand_mat(:,:)
@@ -1530,18 +1529,27 @@ module compla
 
    end function rand_spd_mat
 
-   ! sample from multivariate random normal with mean mu, SD sigma
+   ! sample from multivariate random normal with mean mu, VARIANCE sigma2
    ! this is ``isotropic'', since mu and sigma are scalars
    ! this subroutine is sufficient for the OMP algorithm
-   subroutine mvnrml_rand_mat(A,mu,sigma)
-      real (kind=dblk), intent(in) :: mu,sigma
+   subroutine mvnrml_rand_mat(A,mu,sigma2)
+      real (kind=dblk), intent(in) :: mu,sigma2
       real (kind=dblk), intent(out) :: A(:,:)
 
-      integer (kind=intk) :: Nr,Nc
+      integer (kind=intk) :: Nr,Nc,i,j
+      real (kind=dblk) :: temp,t
 
       Nr = size(A,1)
       Nc = size(A,2)
-      A = 0_dblk
+      
+      t = sqrt(sigma2)
+
+      do j=1,Nc
+         do i=1,Nr
+            call randnrml(temp)
+            A(i,j) = t*temp+mu
+         end do
+      end do
 
    end subroutine mvnrml_rand_mat
 
