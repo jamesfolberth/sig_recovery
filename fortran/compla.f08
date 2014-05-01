@@ -518,7 +518,7 @@ module compla
    subroutine qr_blas(A)
       real (kind=8) :: A(:,:)
      
-      integer (kind=4) :: Nr,Nc,i,k
+      integer (kind=4) :: Nr,Nc,k
       real (kind=8) :: gamm, beta, tau
       real (kind=8), allocatable :: u(:),v(:),temp(:)
 
@@ -606,7 +606,7 @@ module compla
    subroutine apply_q(A,b)
       real (kind=dblk) :: A(:,:),b(:)
       
-      integer (kind=intk) :: Nr,Nc,j,k,i
+      integer (kind=intk) :: Nr,Nc,k
       real (kind=dblk), allocatable :: u(:)
       real (kind=dblk) ::temp,gamm
 
@@ -738,17 +738,17 @@ module compla
    ! {{{
    ! Update QR and RHS after appending a column to A
    ! this is a special case of QR insert
-   ! Note that we don't form Q
+   ! Note that we don't form Q or store info to form it
    subroutine qrinsertcol(R,insert_ind,col,bin)
       real (kind=dblk), intent(inout) :: R(:,:),col(:)
       real (kind=dblk), intent(inout), optional :: bin(:)
       integer (kind=intk) :: insert_ind
 
       real (kind=dblk), allocatable :: b(:)
-      integer (kind=intk) :: Q_m,Q_n,m,n
+      integer (kind=intk) :: m,n
 
       ! used for adding col to empty matrix (call qr_blas)
-      real (kind=dblk), allocatable :: wrk(:,:),Q_wrk(:,:),R_wrk(:,:)
+      real (kind=dblk), allocatable :: wrk(:,:)
 
       m = size(R,1)
       n = size(R,2)
@@ -758,22 +758,23 @@ module compla
       if (present(bin)) then
          b = bin
       else 
-         b = 0_dblk
+         b = 0.0_dblk
       end if
 
       ! Do QR on a vector (appending col to empty matrix)
       if ( insert_ind == 1 ) then
          allocate(wrk(m,1))
          wrk(:,1) = col(:)
-         ! TODO
          call qr_blas(wrk)
-         R(1,1) = wrk(1,1)
-         R(2:m,1) = 0.0_dblk
+         R(:,1) = wrk(:,1)
+         call apply_q(wrk,b)
+         bin = b
          deallocate(wrk)
          return
       end if
 
-      if ( present(bin) ) bin = b
+      !if ( present(bin) ) bin = b
+      bin = b
 
    end subroutine qrinsertcol
 
