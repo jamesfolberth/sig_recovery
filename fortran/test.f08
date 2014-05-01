@@ -40,8 +40,9 @@ program test
    !call test_qr(100,1)
 
    ! Test QR insert
-   call test_qrinsertcol(3,1)
-   !call test_qrinsertcol(5,3)
+   call test_qrappendcol(1000,513)
+   call test_qrappendcol(1000,1000)
+   !call test_qrappendcol(5,3)
 
    ! Time dgemm from whichever BLAS implementation you linked with
    !call time_dgemm(5000)
@@ -585,9 +586,8 @@ program test
          resid = y-b
 
          call form_qr(wrk,Q,R)
-         
          wrk2 = A
-         call dgemm('N','N',Nr,Nc,Nr,-1d0,Q,Nr,R,Nr,1d0,wrk2,Nr)
+         call dgemm('N','N',Nr,Nc,Nr,-1.0d0,Q,Nr,R,Nr,1.0d0,wrk2,Nr)
          print *, "qr time: ",t_1-t_0," CPU seconds"
          print *, "1 norm of A-Q*R: ", norm_p(wrk2,1)
          print *, "Inf norm of resid Q'*b-R*x: ", norm_p(resid,0)
@@ -619,53 +619,66 @@ program test
       ! }}}
 
 
-      subroutine test_qrinsertcol(Nr,Nc) 
+      subroutine test_qrappendcol(Nr,Nc) 
          ! {{{ 
-         integer (kind=4), intent(in) :: Nr,Nc
-         real (kind=8), allocatable :: A(:,:), R(:,:) 
-         real (kind=8), allocatable :: Q_ref(:,:), R_ref(:,:) 
-         real (kind=8), allocatable :: wrk(:,:)
-         real (kind=8), allocatable :: x(:),x_ref(:),b(:),y(:),resid(:)
+         integer (kind=intk), intent(in) :: Nr,Nc
+         real (kind=dblk), allocatable :: A(:,:),Q(:,:),R(:,:) 
+         real (kind=dblk), allocatable :: Q_ref(:,:),R_ref(:,:) 
+         real (kind=dblk), allocatable :: wrk(:,:),wrk2(:,:)
+         real (kind=dblk), allocatable :: x(:),x_ref(:),b(:),y(:),temp(:),resid(:)
+         integer (kind=intk) :: i
+         real (kind=8) :: t_0,t_1,qrt_0,qrt_1
 
          if ( Nc > Nr ) then
-            stop('test_qrinsertcol: number of cols shouldn''t be greater than number of rows')
+            stop('test_qrappendcol: number of cols shouldn''t be greater than number of rows')
          end if
 
          print *,
-         print *, "Testing qrinsertcol:"
+         print *, "Testing qrappendcol:"
          print *, "Size: ",Nr,"x ",Nc
 
-         allocate(Q_ref(Nr,Nr),R_ref(Nr,Nc),R(Nr,Nc))
-         allocate(x(Nc),b(Nr),x_ref(Nc),y(Nr),resid(Nr))
+         allocate(Q_ref(Nr,Nr),R_ref(Nr,Nc),Q(Nr,Nr),R(Nr,Nc))
+         allocate(x(Nc),b(Nr),x_ref(Nc),y(Nr),temp(Nr),resid(Nr))
          A = 2d0*rand_mat(Nr,Nc)-1d0
-         x = 2d0*rand_vec(Nc)-1d0
-         call dgemv('N',Nr,Nc,1.0_dblk,A,Nr,x,1,0.0_dblk,b,1)
+         x_ref = 2d0*rand_vec(Nc)-1d0
+         call dgemv('N',Nr,Nc,1.0_dblk,A,Nr,x_ref,1,0.0_dblk,b,1)
 
          ! Solve with full QR
          wrk = A
+         call cpu_time(qrt_0)
          call qr(wrk)
-         x_ref = b
-         call apply_q(wrk,x_ref)
-         call back_solve_blk(wrk,x_ref)
-         call dgemv('N',Nr,Nc,1.0_dblk,A,Nr,x_ref,1,0.0_dblk,y,1)
-         resid = y-b
-         print *, "Inf norm of resid Q'*b-R*x: ", norm_p(resid,0)
+         call form_qr(wrk,Q_ref,R_ref)
+         call cpu_time(qrt_1)
+         !x_ref = b
+         !call apply_q(wrk,x_ref)
+         !call back_solve_blk(wrk,x_ref)
+         !call dgemv('N',Nr,Nc,1.0_dblk,A,Nr,x_ref,1,0.0_dblk,y,1)
+         !resid = y-b
+         !print *, "Inf norm of resid Q'*b-R*x: ", norm_p(resid,0)
 
-         if ( Nc == 1 ) then
-            wrk = A
-            x = b
-            call qrinsertcol(wrk,1,A(:,1),x)
-            call back_solve_blk(wrk,x)
-            call dgemv('N',Nr,Nc,1.0_dblk,A,Nr,x,1,0.0_dblk,y,1)
-            resid = y-b
-            print *, "Inf norm of resid Q'*b-R*x: ", norm_p(resid,0)
-         else
+         wrk = A
+         call cpu_time(t_0)
+         do i=1,Nc
+            call qrappendcol(Q,R,i,A(:,i))
+         end do
+         call cpu_time(t_1)
 
-         end if
+         call dgemv('T',Nr,Nr,1.0_dblk,Q,Nr,b,1,0.0_dblk,y,1)
+         call back_solve_blk(R,y)
+         x = y(1:Nc)
+         resid = b
+         call dgemv('N',Nr,Nc,-1.0_dblk,A,Nr,x,1,1.0_dblk,resid,1)
 
+         wrk2 = A
+         call dgemm('N','N',Nr,Nc,Nr,-1.0d0,Q,Nr,R,Nr,1.0d0,wrk2,Nr)
+         print *, "qrappendcol build full QR time: ",t_1-t_0," CPU seconds"
+         print *, "qr_blas build full QR time:     ",qrt_1-qrt_0," CPU seconds"
+         print *, "1 norm of A-Q*R: ", norm_p(wrk2,1)
+         ! Note that b-A*x is not usually zero (i.e. for general b)
+         ! It is zero because we _defined_ b <- A*x_ref
+         print *, "Inf norm of resid b-A*x (zero): ", norm_p(resid,0)
 
-
-      end subroutine test_qrinsertcol
+      end subroutine test_qrappendcol
       ! }}}
 
 

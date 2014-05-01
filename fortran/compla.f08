@@ -733,32 +733,29 @@ module compla
 
 
    !!!!!!!!!!!!!!!!!
-   ! QR Insert Col !
+   ! QR Append Col !
    !!!!!!!!!!!!!!!!!
    ! {{{
    ! Update QR and RHS after appending a column to A
    ! this is a special case of QR insert
-   ! Note that we don't form Q or store info to form it
-   subroutine qrinsertcol(R,insert_ind,col,bin)
-      real (kind=dblk), intent(inout) :: R(:,:),col(:)
-      real (kind=dblk), intent(inout), optional :: bin(:)
+   ! Due to the OMP algorithm, we have to build Q :(
+   ! Q,R should already be sufficiently big for adding a column; we're going
+   !  to work in place
+   subroutine qrappendcol(Q,R,insert_ind,col)
+      real (kind=dblk), intent(inout) :: R(:,:),Q(:,:),col(:)
       integer (kind=intk) :: insert_ind
 
-      real (kind=dblk), allocatable :: b(:)
-      integer (kind=intk) :: m,n
+      integer (kind=intk) :: k,m,n
 
-      ! used for adding col to empty matrix (call qr_blas)
-      real (kind=dblk), allocatable :: wrk(:,:)
+      real (kind=dblk), allocatable :: wrk(:,:),temp(:)
+      real (kind=dblk) :: cs,sn,rotg_r,rotg_z
+
 
       m = size(R,1)
       n = size(R,2)
-
-      ! bin is the RHS of a linear system Ax=b
-      allocate(b(n))
-      if (present(bin)) then
-         b = bin
-      else 
-         b = 0.0_dblk
+      
+      if ( n > m ) then
+         stop('compla: qrappendcol: num cols must be less than num rows on entry')
       end if
 
       ! Do QR on a vector (appending col to empty matrix)
@@ -766,17 +763,44 @@ module compla
          allocate(wrk(m,1))
          wrk(:,1) = col(:)
          call qr_blas(wrk)
-         R(:,1) = wrk(:,1)
-         call apply_q(wrk,b)
-         bin = b
+         call form_qr(wrk,Q,R)
+
          deallocate(wrk)
          return
+      
+      ! Q,R are precomputed QR decomp
+      ! we're just going to append a column to then end of the orginal matrix
+      else
+         allocate(temp(m))
+         ! temp <- Q**T*col
+         ! R <- [R temp]
+         call dgemv('T',m,m,1.0_dblk,Q,m,col,1,0.0_dblk,temp,1)
+         call dcopy(m,temp,1,R(1,insert_ind),1)
+
+         ! Givens rotations to zero out the col we just put in
+         do k=m-1,insert_ind,-1
+            rotg_r = R(k,insert_ind)
+            rotg_z = R(k+1,insert_ind)
+            call drotg(rotg_r,rotg_z,cs,sn)
+            R(k,insert_ind) = rotg_r
+            R(k+1,insert_ind) = 0.0_dblk
+
+            ! apply rotations to R
+            ! G*R
+            if ( k < insert_ind ) then
+               call drot(insert_ind-k,R(k,k+1),m,R(k+1,k+1),m,cs,-sn)
+            end if
+
+            ! apply rotations to Q
+            ! Q*G**T 
+            call drot(m,Q(1,k),1,Q(1,k+1),1,cs,sn)
+
+         end do
+
+
       end if
 
-      !if ( present(bin) ) bin = b
-      bin = b
-
-   end subroutine qrinsertcol
+   end subroutine qrappendcol
 
 
    ! }}}
