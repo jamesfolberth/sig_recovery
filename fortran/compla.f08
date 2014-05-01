@@ -39,6 +39,7 @@ module compla
 
    ! BLAS interface
    integer (kind=intk), external :: idamax
+   real (kind=dblk), external :: ddot,dnrm2
 
    contains
 
@@ -456,26 +457,18 @@ module compla
    ! QR decomp by reflectors
    ! Store u_k (to make Q) and R over A
    ! assume first entry of each u_k is identically 1
-   subroutine qr(A,bin)
+   subroutine qr(A)
       real (kind=8) :: A(:,:)
-      real (kind=8), optional :: bin(:)
      
       integer (kind=4) :: Nr,Nc,i,j,k
       real (kind=8) :: gamm, beta, tau
-      real (kind=8), allocatable :: b(:),u(:),temp(:)
+      real (kind=8), allocatable :: u(:),temp(:)
 
       Nr = size(A,1)
       Nc = size(A,2)
 
-      allocate(u(Nr),temp(Nr),b(Nr))
+      allocate(u(Nr),temp(Nr))
      
-      ! bin is the RHS of a linear system Ax=b
-      if (present(bin)) then
-         b = bin
-      else 
-         b = 0_dblk
-      end if
-
       do k=1,Nc
          beta = maxval(abs(A(k:Nr,k)))
          if (beta <= ZERO_TOL) then
@@ -484,11 +477,11 @@ module compla
             ! calculate the reflector (Watkins equation 3.2.35)
             u(k:Nr) = A(k:Nr,k) / beta
             tau = norm_p_vec(u(k:Nr),2)
-            if (u(k)<0) tau = -tau
+            if (u(k)<0_dblk) tau = -tau
             u(k) = u(k) + tau
             gamm = u(k) / tau
             u(k+1:Nr) = u(k+1:Nr) / u(k)
-            u(k) = 1d0
+            u(k) = 1_dblk
             tau = tau*beta
 
             if (abs(gamm) < ZERO_TOL) then
@@ -497,7 +490,7 @@ module compla
             end if
            
             ! Compute Q_k*A_k:Nc,k+1:Nr
-            temp = 0
+            temp = 0_dblk
             do j=k+1,Nc
                do i=k,Nr
                   temp(j) = temp(j)+u(i)*A(i,j)
@@ -511,47 +504,30 @@ module compla
                end do
             end do
 
-            ! Compute Q_k*b_k:Nc
-            temp(1) = 0
-            do i=k,Nr
-               temp(1) = temp(1) + u(i)*b(i)
-            end do
-            b(k:Nr) = b(k:Nr) - gamm*temp(1)*u(k:Nr)
-               
             ! Store reflector vectors over A (u_k=1 is assumed)
             A(k,k) = -tau
             A(k+1:Nr,k) = u(k+1:Nr)
          end if
       end do
 
-      if (present(bin)) bin = b
-
    end subroutine qr
 
    ! QR decomp by reflectors (BLAS calls)
    ! Store u_k's (to make Q) and R over A
    ! assume first entry of each u_k is identically 1
-   subroutine qr_blas(A,bin)
+   subroutine qr_blas(A)
       real (kind=8) :: A(:,:)
-      real (kind=8), optional :: bin(:)
      
       integer (kind=4) :: Nr,Nc,i,k
       real (kind=8) :: gamm, beta, tau
-      real (kind=8), allocatable :: b(:),u(:),v(:),temp(:)
+      real (kind=8), allocatable :: u(:),v(:),temp(:)
 
       Nr = size(A,1)
       Nc = size(A,2)
 
-      allocate(u(Nr),v(Nr),temp(Nr),b(Nr))
+      allocate(u(Nr),v(Nr),temp(Nr))
      
-      ! bin is the RHS of a linear system Ax=b
-      if (present(bin)) then
-         b = bin
-      else 
-         b = 0_dblk
-      end if
-
-      do k=1,Nc
+      do k=1,Nc-1
          !beta = maxval(abs(A(k:Nr,k)))
          beta = abs(A(k-1+idamax(Nr-k+1,A(k,k),1),k))
          if (beta <= ZERO_TOL) then
@@ -560,14 +536,14 @@ module compla
             ! calculate the reflector (Watkins equation 3.2.35)
             !u(k:Nc) = A(k:Nc,k) / beta
             call dcopy(Nr-k+1,A(k,k),1,u(k),1)
-            call dscal(Nr-k+1,1d0/beta,u(k),1)
+            call dscal(Nr-k+1,1.0_dblk/beta,u(k),1)
             tau = norm_p_vec(u(k:Nr),2) 
             if (u(k)<0) tau = -tau
             u(k) = u(k) + tau
             gamm = u(k) / tau
             !u(k+1:Nc) = u(k+1:Nc) / u(k)
-            call dscal(Nr-k,1d0/u(k),u(k+1),1)
-            u(k) = 1d0
+            call dscal(Nr-k,1.0_dblk/u(k),u(k+1),1)
+            u(k) = 1.0_dblk
             tau = tau*beta
 
             if (abs(gamm) < ZERO_TOL) then
@@ -577,20 +553,10 @@ module compla
            
             ! Compute Q_k*A_k:Nc,k+1:Nr
             ! u**T*A = (A**T*u)**T
-            !print *, Nr-k+1,Nc-k
-            if (k < Nc) then
-               call dgemv('T',Nr-k+1,Nc-k,1d0,A(k,k+1),Nr,u(k),1,0d0,temp(k+1),1)
-               ! finish the rank-one update
-               call dger(Nr-k+1,Nc-k, -gamm,u(k),1,temp(k+1),1,A(k,k+1),Nr)
+            call dgemv('T',Nr-k+1,Nc-k,1.0_dblk,A(k,k+1),Nr,u(k),1,0.0_dblk,temp(k+1),1)
+            ! finish the rank-one update
+            call dger(Nr-k+1,Nc-k, -gamm,u(k),1,temp(k+1),1,A(k,k+1),Nr)
 
-               ! Compute Q_k*b_k:Nc
-               temp(1) = 0
-               do i=k,Nr
-                  temp(1) = temp(1) + u(i)*b(i)
-               end do
-               b(k:Nr) = b(k:Nr) - gamm*temp(1)*u(k:Nr)
-            end if
-               
             ! Store reflector vectors over A (u_k=1 is assumed)
             A(k,k) = -tau
             !A(k+1:Nr,k) = u(k+1:Nr)
@@ -598,16 +564,105 @@ module compla
          end if
       end do
 
-      if (present(bin)) bin = b
+      k = Nc
+      if ( Nc == Nr ) then
+         A(k,k) = -A(k,k)
 
+      else ! Nr > Nc tall and skinny
+         beta = abs(A(k-1+idamax(Nr-k+1,A(k,k),1),k))
+         if (beta <= ZERO_TOL) then
+            ! gamma = 0, Q_k = I, no multiplication required
+         else
+            ! calculate the reflector (Watkins equation 3.2.35)
+            !u(k:Nc) = A(k:Nc,k) / beta
+            call dcopy(Nr-k+1,A(k,k),1,u(k),1)
+            call dscal(Nr-k+1,1.0_dblk/beta,u(k),1)
+            tau = norm_p_vec(u(k:Nr),2) 
+            if (u(k)<0) tau = -tau
+            u(k) = u(k) + tau
+            gamm = u(k) / tau
+            !u(k+1:Nc) = u(k+1:Nc) / u(k)
+            call dscal(Nr-k,1.0_dblk/u(k),u(k+1),1)
+            u(k) = 1.0_dblk
+            tau = tau*beta
+
+            if (abs(gamm) < ZERO_TOL) then
+               print *, "error: compla.f08: qr_blas: input matrix is singular to within ZERO_TOL"
+               stop
+            end if
+           
+            ! Store reflector vectors over A (u_k=1 is assumed)
+            A(k,k) = -tau
+            !A(k+1:Nr,k) = u(k+1:Nr)
+            call dcopy(Nr-k,u(k+1),1,A(k+1,k),1)
+         end if
+      end if
+ 
    end subroutine qr_blas
+
+
+   ! Apply Q to a RHS vector
+   ! A has the u^(k) overwritten and R as the upper triangle
+   subroutine apply_q(A,b)
+      real (kind=dblk) :: A(:,:),b(:)
+      
+      integer (kind=intk) :: Nr,Nc,j,k,i
+      real (kind=dblk), allocatable :: u(:)
+      real (kind=dblk) ::temp,gamm
+
+      Nr = size(A,1)
+      Nc = size(A,2)
+
+      allocate(u(Nr))
+      do k=1,Nc-1
+         temp = 0_dblk
+         u(k) = 1_dblk
+         call dcopy(Nr-k,A(k+1,k),1,u(k+1),1)
+         gamm = 2_dblk/dnrm2(Nr-k+1,u(k),1)**2
+
+         !do i=k,Nr
+         !   temp = temp + u(i)*b(i)
+         !end do
+         !b(k:Nr) = b(k:Nr) - gamm*temp*u(k:Nr)
+         temp = ddot(Nr-k+1,u(k),1,b(k),1)
+         call dscal(Nr-k+1,temp,u(k),1)
+         call daxpy(Nr-k+1,-gamm,u(k),1,b(k),1)
+
+      end do 
+
+      if ( Nc==Nr ) then
+         u(Nc) = 1_dblk
+         gamm = 2_dblk
+         temp = u(Nc)*b(Nc)
+         b(Nc) = b(Nc)-gamm*temp*u(Nc)
+
+      else
+         k = Nc
+         temp = 0_dblk
+         u(k) = 1_dblk
+         call dcopy(Nr-k,A(k+1,k),1,u(k+1),1)
+         gamm = 2_dblk/dnrm2(Nr-k+1,u(k),1)**2
+
+         !do i=k,Nr
+         !   temp = temp + u(i)*b(i)
+         !end do
+         !b(k:Nr) = b(k:Nr) - gamm*temp*u(k:Nr)
+         temp = ddot(Nr-k+1,u(k),1,b(k),1)
+         call dscal(Nr-k+1,temp,u(k),1)
+         call daxpy(Nr-k+1,-gamm,u(k),1,b(k),1)
+
+         b(k+1:Nr) = 0_dblk
+
+      end if
+      
+   end subroutine apply_q
 
 
    ! Form Q,R from QR decomposition (this is expensive to call)
    subroutine form_qr(A,Q,R)
       real (kind=8) :: A(:,:), Q(:,:), R(:,:)
 
-      integer (kind=4) :: Nr,Nc, j,k
+      integer (kind=4) :: Nr,Nc,j,k,i
       real (kind=8), allocatable :: u(:),temp(:)
       real (kind=8) :: gamm
 
@@ -625,15 +680,30 @@ module compla
          !end do
          call dcopy(j,A(1,j),1,R(1,j),1)
       end do
-     
+
       ! Apply Q_k's (which form Q^T, k=Nc-1,..,1) to I to find Q*I
       ! Watkins exercise 3.2.44
-      do k=Nc,1,-1
-         temp = 0
-         u(k) = 1d0
+      if ( Nc == Nr ) then
+         Q(Nc,Nc) = -1_dblk
+      else ! Nr > Nc
+         k = Nc
+         temp = 0_dblk
+         u(k) = 1_dblk
          !u(k+1:Nc) = A(k+1:Nc,k)
          call dcopy(Nr-k,A(k+1,k),1,u(k+1),1)
-         gamm = 2/norm_p_vec(u(k:Nr),2)**2
+         gamm = 2_dblk/dnrm2(Nr-k+1,u(k),1)**2
+
+         ! see comments below 
+         call dgemv('T',Nr-k+1,Nr-k+1,1.0_dblk,Q(k,k),Nr,u(k),1,0.0_dblk,temp(k),1)
+         call dger(Nr-k+1,Nr-k+1, -gamm,u(k),1,temp(k),1,Q(k,k),Nr)
+      end if
+
+      do k=Nc-1,1,-1
+         temp = 0.0_dblk
+         u(k) = 1.0_dblk
+         !u(k+1:Nc) = A(k+1:Nc,k)
+         call dcopy(Nr-k,A(k+1,k),1,u(k+1),1)
+         gamm = 2.0_dblk/dnrm2(Nr-k+1,u(k),1)**2
 
          !do i=k,Nc
          !   do j=k,Nr
@@ -649,7 +719,9 @@ module compla
          !end do
 
          ! u**T*Q = (Q**T*u)**T
-         call dgemv('T',Nr-k+1,Nr-k+1,1d0,Q(k,k),Nr,u(k),1,0d0,temp(k),1)
+         ! XXX when calling external with alpha/beta, use 1.0_dblk as opposed 
+         ! to 1_dblk.  It seems that there is a difference...
+         call dgemv('T',Nr-k+1,Nr-k+1,1.0_dblk,Q(k,k),Nr,u(k),1,0.0_dblk,temp(k),1)
          ! finish the rank-one update
          call dger(Nr-k+1,Nr-k+1, -gamm,u(k),1,temp(k),1,Q(k,k),Nr)
 
@@ -693,7 +765,8 @@ module compla
       if ( insert_ind == 1 ) then
          allocate(wrk(m,1))
          wrk(:,1) = col(:)
-         call qr_blas(wrk,b)
+         ! TODO
+         call qr_blas(wrk)
          R(1,1) = wrk(1,1)
          R(2:m,1) = 0.0_dblk
          deallocate(wrk)
@@ -719,7 +792,7 @@ module compla
       ! call check_square(U)
       ! call check_upper_tri(U)
 
-      Nc=size(U,1)
+      Nc=size(U,2)
 
       row: do j=Nc,1,-1
          ! zero on diagonal
@@ -746,7 +819,7 @@ module compla
       ! call check_square(U)
       ! call check_upper_tri(U)
 
-      Nc = size(U,1)
+      Nc = size(U,2)
       s = Nc / blk_size
 
       ! Column oriented backward substitution
@@ -1272,8 +1345,6 @@ module compla
       condest_lu = condest_lu * norm_p(A,1)
 
    end function condest_lu
-
-
 
    ! }}}
 
