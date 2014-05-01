@@ -22,6 +22,15 @@
    
    Update: check out mfile_header_template.m for a nice header template.
 
+
+* Fortran
+   - Generating N(0,1) psuedorandom numbers:
+      http://en.wikipedia.org/wiki/Normal_distribution#Generating_values_from_normal_distribution
+      http://en.wikipedia.org/wiki/Box_M%C3%BCller
+      http://en.wikipedia.org/wiki/Marsaglia_polar_method
+      http://epubs.siam.org/doi/abs/10.1137/1006063
+      http://en.wikipedia.org/wiki/Ziggurat_algorithm
+
 * DATA:
    - tropp_fig1_data_glnx64.mat.bak_01
       1000 vectors per N, vectors chosen with uniform random entries from [-1,1]

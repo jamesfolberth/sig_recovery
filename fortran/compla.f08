@@ -18,7 +18,9 @@ module compla
    integer, parameter :: intk = kind(1)
    integer, parameter :: dblk = kind(1d0) ! TODO 4->intk, 8->dblk
 
-   real (kind=8), parameter :: ZERO_TOL = 10**(-14)
+   real (kind=dblk), parameter :: ZERO_TOL = 10**(-14)
+   real (kind=dblk), parameter :: PI = 4_dblk*atan(1.0_dblk)
+   real (kind=dblk), parameter :: TWO_PI = 8_dblk**atan(1.0_dblk)
 
    ! p-norm function overload
    public norm_p
@@ -1374,62 +1376,10 @@ module compla
    ! }}}
 
 
-   !!!!!!!!!!!!!!!!!
-   ! Misc Routines !
-   !!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!
+   ! Mat/Vec Building !
+   !!!!!!!!!!!!!!!!!!!!
    ! {{{
-   ! behaves like Octave's tic()
-   subroutine tic(t)
-      integer, intent(out) :: t
-      call system_clock(t)
-   end subroutine tic
-   
-   ! returns time in seconds from now to time described by t
-   real function toc_return(t)
-      integer, intent(in) :: t
-      integer :: now, clock_rate
-   
-      call system_clock(now, clock_rate)
-      toc_return = real(now - t)/real(clock_rate)
-   end function toc_return
-   
-   ! prints time in seconds from now to time described by t
-   subroutine toc(t)
-      integer, intent(in) :: t
-      real (kind=8) :: time
-      integer :: now, clock_rate
-   
-      call system_clock(now, clock_rate)
-      time = real(now - t)/real(clock_rate)
-      print *,"Elapsed time is ",time," seconds."
-   end subroutine toc
-   
-   ! print a rank 2  array
-   subroutine print_array(A)
-      real (kind=8), intent(in) :: A(:,:)
-
-      integer (kind=4) :: i,j
-      character (len=30) :: rowfmt
-   
-      write(rowfmt, "(A,I4,A)") "(",size(A,2),"(1X,SS,10Es13.4))"
-      print *,
-      row_print: do i=1,size(A,1)
-         write(*, fmt=rowfmt) (A(i,j), j=1,size(A,2))
-      end do row_print
-   end subroutine print_array
-
-   ! print a rand 1 array
-   subroutine print_vector(A)
-      real (kind=8), intent(in) :: A(:)
-
-      integer (kind=4) :: i
-
-      print *,
-      row_print: do i=1,size(A,1)
-         write(*, fmt="(1X,SS,10Es13.4)") A(i)
-      end do row_print
-   end subroutine print_vector
-
    function eye(Nr,Nc)
       integer (kind=4), intent(in) :: Nr,Nc
       real (kind=8), allocatable :: eye(:,:)
@@ -1472,6 +1422,47 @@ module compla
       end if
 
    end function diag
+   ! }}}
+
+
+   !!!!!!!!!!
+   ! Random !
+   !!!!!!!!!!
+   ! {{{
+
+   ! Sample from N(0,1)
+   ! http://en.wikipedia.org/wiki/Marsaglia_polar_method
+   ! Samples from N(mu,sigma^2) can be found by z = mu+sigma*N(0,1)
+   subroutine randnrml(nrml)
+      real (kind=dblk) :: nrml
+
+      logical, save :: has_spare = .false.
+      real (kind=dblk), save :: spare
+      real (kind=dblk) :: u,v,s
+
+      if ( has_spare ) then
+         has_spare = .false.
+         nrml = spare
+         return
+      end if
+
+      has_spare = .true.
+      do while (.true.)
+         call random_number(u) ! U(0,1)
+         call random_number(v)
+         u = 2.0_dblk*u-1.0_dblk
+         v = 2.0_dblk*v-1.0_dblk
+         s = u*u+v*v
+
+         if ( (s < 1.0_dblk) .or. (s < ZERO_TOL) ) exit
+      end do
+
+      s = dsqrt(-2.0_dblk*dlog(s)/s)
+      spare = v*s
+      nrml = u*s
+   
+   end subroutine randnrml
+
 
    function rand_mat(Nr,Nc)
       integer (kind=4), intent(in) :: Nr, Nc
@@ -1539,7 +1530,21 @@ module compla
 
    end function rand_spd_mat
 
-  
+   ! sample from multivariate random normal with mean mu, SD sigma
+   ! this is ``isotropic'', since mu and sigma are scalars
+   ! this subroutine is sufficient for the OMP algorithm
+   subroutine mvnrml_rand_mat(A,mu,sigma)
+      real (kind=dblk), intent(in) :: mu,sigma
+      real (kind=dblk), intent(out) :: A(:,:)
+
+      integer (kind=intk) :: Nr,Nc
+
+      Nr = size(A,1)
+      Nc = size(A,2)
+      A = 0_dblk
+
+   end subroutine mvnrml_rand_mat
+
    subroutine init_random_seed()
      ! Stolen from http://gcc.gnu.org/onlinedocs/gfortran/RANDOM_005fSEED.html
      ! {{{
@@ -1591,6 +1596,65 @@ module compla
      ! }}}
 
    end subroutine init_random_seed
+   ! }}}
+
+
+   !!!!!!!!!!!!!!!!!
+   ! Misc Routines !
+   !!!!!!!!!!!!!!!!!
+   ! {{{
+   ! behaves like Octave's tic()
+   subroutine tic(t)
+      integer, intent(out) :: t
+      call system_clock(t)
+   end subroutine tic
+   
+   ! returns time in seconds from now to time described by t
+   real function toc_return(t)
+      integer, intent(in) :: t
+      integer :: now, clock_rate
+   
+      call system_clock(now, clock_rate)
+      toc_return = real(now - t)/real(clock_rate)
+   end function toc_return
+   
+   ! prints time in seconds from now to time described by t
+   subroutine toc(t)
+      integer, intent(in) :: t
+      real (kind=8) :: time
+      integer :: now, clock_rate
+   
+      call system_clock(now, clock_rate)
+      time = real(now - t)/real(clock_rate)
+      print *,"Elapsed time is ",time," seconds."
+   end subroutine toc
+   
+   ! print a rank 2  array
+   subroutine print_array(A)
+      real (kind=8), intent(in) :: A(:,:)
+
+      integer (kind=4) :: i,j
+      character (len=30) :: rowfmt
+   
+      write(rowfmt, "(A,I4,A)") "(",size(A,2),"(1X,SS,10Es13.4))"
+      print *,
+      row_print: do i=1,size(A,1)
+         write(*, fmt=rowfmt) (A(i,j), j=1,size(A,2))
+      end do row_print
+   end subroutine print_array
+
+   ! print a rand 1 array
+   subroutine print_vector(A)
+      real (kind=8), intent(in) :: A(:)
+
+      integer (kind=4) :: i
+
+      print *,
+      row_print: do i=1,size(A,1)
+         write(*, fmt="(1X,SS,10Es13.4)") A(i)
+      end do row_print
+   end subroutine print_vector
+ 
    ! }}}
 
 

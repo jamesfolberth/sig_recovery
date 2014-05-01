@@ -2,5 +2,6 @@
 *.mat*
 *.o
 *.mod
+*.h5
 fortran/test
 data/*

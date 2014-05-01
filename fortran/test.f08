@@ -40,9 +40,8 @@ program test
    !call test_qr(100,1)
 
    ! Test QR insert
-   call test_qrappendcol(1000,513)
-   call test_qrappendcol(1000,1000)
-   !call test_qrappendcol(5,3)
+   !call test_qrappendcol(100,51)
+   !call test_qrappendcol(100,100)
 
    ! Time dgemm from whichever BLAS implementation you linked with
    !call time_dgemm(5000)
@@ -50,6 +49,12 @@ program test
 
    ! Test saving data to HDF5 file
    !call test_save_stuff(10)
+
+   ! Test randnrml
+   call test_randnrml(10000)
+
+   ! Test mvnrml_rand_mat
+   !call test_mvnrml_rand_mat(10,5)
  
   
    ! {{{
@@ -643,18 +648,12 @@ program test
          x_ref = 2d0*rand_vec(Nc)-1d0
          call dgemv('N',Nr,Nc,1.0_dblk,A,Nr,x_ref,1,0.0_dblk,b,1)
 
-         ! Solve with full QR
+         ! Solve with full QR (for timing)
          wrk = A
          call cpu_time(qrt_0)
-         call qr(wrk)
+         call qr_blas(wrk)
          call form_qr(wrk,Q_ref,R_ref)
          call cpu_time(qrt_1)
-         !x_ref = b
-         !call apply_q(wrk,x_ref)
-         !call back_solve_blk(wrk,x_ref)
-         !call dgemv('N',Nr,Nc,1.0_dblk,A,Nr,x_ref,1,0.0_dblk,y,1)
-         !resid = y-b
-         !print *, "Inf norm of resid Q'*b-R*x: ", norm_p(resid,0)
 
          wrk = A
          call cpu_time(t_0)
@@ -750,6 +749,57 @@ program test
 
       end subroutine test_save_stuff
       ! }}}
+
+
+      subroutine test_randnrml(N)
+      ! {{{
+         integer (kind=intk) :: N
+
+         real (kind=dblk), allocatable :: vec(:)
+         real (kind=dblk) :: temp
+         integer (kind=intk) :: i
+
+         character (len=255) :: savefile
+         integer (kind=intk) :: h5error, file_id
+
+         allocate(vec(N))
+
+         do i=1,N
+            call randnrml(temp)
+            vec(i) = temp
+         end do
+            
+         ! Save to ./test_randnrml.h5
+         ! open with octave/matlab and run hist(vec,100)
+         ! should look like N(0,1^2)
+         savefile = "test_randnrml.h5"
+         call h5open_f(h5error)
+         call h5fcreate_f(savefile, H5F_ACC_TRUNC_F, file_id, h5error)
+    
+         call write_dset(file_id, vec, "vec")
+    
+         call h5fclose_f(file_id,h5error)
+         call h5close_f(h5error)
+ 
+         deallocate(vec)
+
+      end subroutine test_randnrml
+      ! }}}
+     
+
+      subroutine test_mvnrml_rand_mat(Nr,Nc)
+      ! {{{
+         integer (kind=intk) :: Nr,Nc
+
+         real (kind=dblk), allocatable :: A(:,:)
+         real (kind=dblk) :: mu, Sigma
+         
+         allocate(A(Nr,Nc))
+         call mvnrml_rand_mat(A,mu,Sigma)
+
+      end subroutine test_mvnrml_rand_mat
+      ! }}}
+
 
 
 end program test
