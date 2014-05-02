@@ -80,16 +80,23 @@ module omp
 
    ! check_recovery
    function check_recovery(s,s_hat)
+   ! {{{
       real (kind=dblk) :: s(:),s_hat(:)
       integer (kind=intk) :: check_recovery
 
+      !integer (kind=intk) :: i
+      !do i=1,size(s)
+      !   print *, s(i),s_hat(i)
+      !end do
+      
       check_recovery = 0
-      print *, norm_p(s-s_hat,0)
+      !print *,"norm = ", norm_p(s-s_hat,0)
       if ( norm_p(s-s_hat,0) < 10E-14_dblk ) then
          check_recovery = 1
       end if
 
    end function check_recovery
+   ! }}}
 
    ! gen_sig
    ! generate sparse signal s with m non-zero entries
@@ -124,7 +131,8 @@ module omp
          end if
       end do
 
-      !write (*,"(I3)"), sparse_inds
+      ! zero out s
+      call dscal(size(s),0.0_dblk,s,1)
 
       ! fill in the sparse vector 
       if ( present(fillval_in) ) then

@@ -9,7 +9,7 @@ program tropp_fig1_comp
    integer (kind=intk), parameter :: d=256_intk
    real (kind=dblk), parameter    :: delta = 0.1_dblk
    integer (kind=intk), parameter :: K=5_intk
-   integer (kind=intk), parameter :: num_sigs = 100
+   integer (kind=intk), parameter :: num_sigs = 1000
    integer (kind=intk), parameter, dimension(5) :: m_vec = (/ 4,12,20,28,36 /)
 
    ! pre-loop vars
@@ -67,7 +67,6 @@ program tropp_fig1_comp
 
          print *, percent_recovered(i_N,i_m) / dble(num_sigs) * 100.0_dblk
          deallocate(Phi,v)
-         stop('stuff')
       end do
 
       ! save data
