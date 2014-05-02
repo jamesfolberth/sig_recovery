@@ -4,4 +4,5 @@
 *.mod
 *.h5
 fortran/test
+fortran/tropp_fig1_comp
 data/*
