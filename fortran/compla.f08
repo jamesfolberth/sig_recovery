@@ -812,14 +812,19 @@ module compla
    ! For/Back Solve !
    !!!!!!!!!!!!!!!!!!
    ! {{{
-   subroutine back_solve(U,b)
+   subroutine back_solve(U,b,col_cutoff)
       real (kind=8) :: U(:,:), b(:)
+      integer (kind=intk), optional :: col_cutoff
       integer (kind=4) :: i,j,Nc
 
       ! call check_square(U)
       ! call check_upper_tri(U)
 
-      Nc=size(U,2)
+      if ( present(col_cutoff) ) then
+         Nc = col_cutoff
+      else
+         Nc=size(U,2)
+      end if
 
       row: do j=Nc,1,-1
          ! zero on diagonal
@@ -836,8 +841,9 @@ module compla
 
    end subroutine back_solve
 
-   subroutine back_solve_blk(U,b)
+   subroutine back_solve_blk(U,b,col_cutoff)
       real (kind=8) :: U(:,:), b(:)
+      integer (kind=intk), optional :: col_cutoff
 
       integer (kind=4), parameter :: blk_size=8
       integer (kind=4) :: i,j,s,Nc
@@ -846,7 +852,11 @@ module compla
       ! call check_square(U)
       ! call check_upper_tri(U)
 
-      Nc = size(U,2)
+      if ( present(col_cutoff) ) then
+         Nc = col_cutoff
+      else
+         Nc = size(U,2)
+      end if
       s = Nc / blk_size
 
       ! Column oriented backward substitution
@@ -911,14 +921,19 @@ module compla
    end subroutine back_solve_blk
 
    
-   subroutine for_solve(L,b)
+   subroutine for_solve(L,b,col_cutoff)
       real (kind=8) :: L(:,:), b(:)
+      integer (kind=intk), optional :: col_cutoff
       integer (kind=4) :: i,j,Nc
 
       ! call check_square(L)
       ! call check_lower_tri(L)
 
-      Nc = size(L,1)
+      if ( present(col_cutoff) ) then
+         Nc = col_cutoff
+      else
+         Nc = size(L,1)
+      end if
 
       row: do j=1,Nc
          ! zero on diagonal means singular matrix
@@ -938,14 +953,19 @@ module compla
    ! This is the same as the for_solve routine, but assumes
    ! that the main diagonal of L is filled with ones 
    ! expected input is A, overwritten with L,U from LU decomp.
-   subroutine for_solve_lu(L,b)
+   subroutine for_solve_lu(L,b,col_cutoff)
       real (kind=8) :: L(:,:), b(:)
+      integer (kind=intk), optional :: col_cutoff
       integer (kind=4) :: i,j,Nc
 
       ! call check_square(L)
       ! call check_lower_tri(L)
 
-      Nc = size(L,1)
+      if ( present(col_cutoff) ) then
+         Nc = col_cutoff
+      else
+         Nc = size(L,1)
+      end if
 
       row: do j=1,Nc
          ! it is assumed that L(j,j)=1
@@ -964,8 +984,9 @@ module compla
 
    end subroutine for_solve_lu
 
-   subroutine for_solve_blk(L,b)
+   subroutine for_solve_blk(L,b,col_cutoff)
       real (kind=8) :: L(:,:), b(:)
+      integer (kind=intk), optional :: col_cutoff
 
       integer (kind=4), parameter :: blk_size=8
       integer (kind=4) :: i,j,s,Nc
@@ -974,7 +995,11 @@ module compla
       ! call check_square(L)
       ! call check_lower_tri(L)
 
-      Nc = size(L,1)
+      if ( present(col_cutoff) ) then
+         Nc = col_cutoff
+      else
+         Nc = size(L,1)
+      end if
       s = Nc / blk_size
 
       ! Do forward subs in square blocks as far as possible
@@ -1041,8 +1066,9 @@ module compla
 
    ! This is the same as for_solve_blk, except that is assumes ones along the main diagonal of L
    ! Use this routine for L,U overwritten on A
-   subroutine for_solve_lu_blk(L,b)
+   subroutine for_solve_lu_blk(L,b,col_cutoff)
       real (kind=8) :: L(:,:), b(:)
+      integer (kind=intk), optional :: col_cutoff
 
       integer (kind=4), parameter :: blk_size=8
       integer (kind=4) :: i,j,s,Nc
@@ -1051,7 +1077,11 @@ module compla
       ! call check_square(L)
       ! call check_lower_tri(L)
 
-      Nc = size(L,1)
+      if ( present(col_cutoff) ) then
+         Nc = col_cutoff
+      else
+         Nc = size(L,1)
+      end if
       s = Nc / blk_size
 
       ! Do forward subs in square blocks as far as possible
@@ -1380,6 +1410,26 @@ module compla
    ! Mat/Vec Building !
    !!!!!!!!!!!!!!!!!!!!
    ! {{{
+   ! linspace
+   !  behaves like Matlab's linspace
+   function linspace(x_start, x_end, N)
+      real (kind=dblk), intent(in) :: x_start, x_end
+      integer (kind=intk), intent(in) :: N
+
+      real (kind=dblk), allocatable :: linspace(:)
+      real (kind=dblk) :: h
+      integer (kind=intk) :: i
+
+      allocate(linspace(N))
+      h = (x_end-x_start) / dble(N-1)
+
+      linspace(1) = x_start
+      do i=1+1,N-1
+         linspace(i) = linspace(i-1)+h
+      end do
+      linspace(N)=x_end
+   end function linspace
+
    function eye(Nr,Nc)
       integer (kind=4), intent(in) :: Nr,Nc
       real (kind=8), allocatable :: eye(:,:)

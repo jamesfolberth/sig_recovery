@@ -25,10 +25,10 @@ program test
    !call test_lu_nopp(100)
 
    ! forward and back solve (not by blocks) with LU decomp (not by blocks)
-   !call test_fb_solve_lu(100)
+   call test_fb_solve_lu(100)
    
    ! forward and back solve (by blocks) with LU decomp (not by blocks)
-   !call test_fb_solve_blk_lu(100)
+   call test_fb_solve_blk_lu(100)
 
    ! Test matrix condition number
    !call test_condest_lu(100)
@@ -54,7 +54,7 @@ program test
    !call test_randnrml(10000)
 
    ! Test mvnrml_rand_mat
-   call test_mvnrml_rand_mat(1000,300)
+   !call test_mvnrml_rand_mat(1000,300)
  
   
    ! {{{
