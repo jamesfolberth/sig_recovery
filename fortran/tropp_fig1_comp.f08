@@ -69,13 +69,11 @@ program tropp_fig1_comp
          deallocate(Phi,v)
       end do
 
-      ! save data
-      percent_recovered = percent_recovered / dble(num_sigs) * 100.0_dblk
+      ! calculate percentage for the column we just calculated and save data
+      call dscal(size(N_vec),100.0_dblk/dble(num_sigs),&
+         percent_recovered(1,i_m),1)
       call save_data_fig1(savefile,N_vec,m_vec,percent_recovered,d)
    end do
-
-   percent_recovered = percent_recovered / dble(num_sigs) * 100.0_dblk
-   call save_data_fig1(savefile,N_vec,m_vec,percent_recovered,d)
 
    deallocate(percent_recovered,s,s_hat)
 
