@@ -46,4 +46,6 @@ legend(sprintf('N=%d',N_vec(1)),...
        sprintf('N=%d',N_vec(5)),...
        'Location','NorthEast');
 
+print('../figures/tropp_fig2.png','-dpng');
+
 end % tropp_fig2_ploth5

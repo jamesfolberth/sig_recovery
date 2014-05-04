@@ -10,7 +10,7 @@ program test_tropp_thm2
    real (kind=dblk), parameter    :: delta = 0.35_dblk
    real (kind=dblk), parameter    :: K=5.0_dblk
    integer (kind=intk), parameter :: num_sigs = 1000
-   integer (kind=intk), parameter :: m = 20
+   integer (kind=intk), parameter :: m = 10
    integer (kind=intk) :: N
 
    ! loop vars
@@ -21,7 +21,6 @@ program test_tropp_thm2
 
    ! N from Thm 2 of Tropp 2007
    N = ceiling(K*dble(m)*log(dble(d)/delta))
-   N = 256_intk
 
    call init_random_seed()
 

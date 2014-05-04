@@ -16,35 +16,27 @@ module omp
       logical :: realloc
 
       real (kind=dblk), allocatable, save :: Q(:,:),R(:,:),Phi_t(:,:),&
-         resid(:),temp(:),rhs(:),x(:),a(:)
+         resid(:),temp(:),rhs(:),x(:),a(:),z(:),cols(:,:)
       integer (kind=intk), allocatable, save :: Lambda(:)
       integer (kind=intk) :: N,d,t
+      real (kind=dblk) :: zt
 
       N = size(Phi,1)
       d = size(Phi,2)
 
       if ( realloc ) then
          if ( allocated(Q) ) then
-            deallocate(Q,R,Phi_t,resid,Lambda,temp,rhs,x,a)
+            deallocate(Q,R,Phi_t,resid,Lambda,temp,rhs,x,a,z,cols)
          end if
          allocate(Q(N,N),R(N,m),Phi_t(N,m),resid(N),Lambda(m),temp(d),&
-            rhs(N),x(m),a(N))
+            rhs(N),x(m),a(N),z(N),cols(N,m))
          realloc = .false.
       end if
 
-      ! This didn't fix the problem
-      !Q = 0.0_dblk
-      !R = 0.0_dblk
-      !resid = 0.0_dblk
-      !Lambda = 0
-      !temp = 0.0_dblk
-      !rhs = 0.0_dblk
-      !x = 0.0_dblk
-      !a = 0.0_dblk
-      !s_hat = 0.0_dblk
-
       ! 1 - initialization
       call dcopy(N,v,1,resid,1) ! resid <- v
+      call dcopy(N,v,1,z,1)     ! z <- v
+      call dcopy(N,v,1,rhs,1)   ! z <- v
       do t=1,m
          ! 2 - find index
          ! temp <- 1.0*Phi**T*resid + 0.0*temp
@@ -57,10 +49,17 @@ module omp
          call dcopy(N,Phi(1,Lambda(t)),1,Phi_t(1,t),1)
 
          ! 4 - solve least squares problem
-         call qrappendcol(Q,R,t,Phi(:,Lambda(t)))
-         call dgemv('T',N,N,1.0_dblk,Q,N,v,1,0.0_dblk,rhs,1)
-         call dcopy(t,rhs,1,x,1)
+         !call qrappendcol(Q,R,t,Phi(:,Lambda(t)))
+         !call dgemv('T',N,N,1.0_dblk,Q,N,v,1,0.0_dblk,rhs,1)
+         !call dcopy(t,rhs,1,x,1)
+
+         call dcopy(N,Phi(1,Lambda(t)),1,cols(1,t),1)
+         call mod_GS(cols,Q,R,t,zt,rhs)
+         z(t) = zt
+         call dcopy(t,z,1,x,1)
          call back_solve_blk(R,x,min(t,size(R,1)))
+
+         !call print_vector(x)
 
          ! 5 - update approximation and residual
          call dgemv('N',N,t,1.0_dblk,Phi_t,N,x,1,0.0_dblk,a,1)
@@ -76,6 +75,53 @@ module omp
       end do
 
    end subroutine omp_algo
+   ! }}}
+
+   ! modified Gram-Schmidt to append col
+   subroutine mod_GS(A,Q,R,t,zt,rhs)
+   ! {{{
+      real (kind=dblk) :: A(:,:),Q(:,:),R(:,:),zt,rhs(:)
+      integer (kind=intk) :: t
+
+      integer (kind=intk) :: i,Nr
+
+      Nr = size(Q,1)
+
+      if ( t == 1 ) then
+         call dcopy(Nr,A(1,t),1,Q(1,t),1)
+         R(t,t) = dnrm2(Nr,Q(1,t),1)
+
+         if ( abs(R(t,t)) <= ZERO_TOL ) then
+            stop('omp: mod_GS: R is singular')
+         end if
+
+         call dscal(Nr,1.0_dblk/R(t,t),Q(1,t),1)
+
+         zt = ddot(Nr,Q(1,t),1,rhs(1),1)
+         call daxpy(Nr,-zt,Q(1,t),1,rhs(1),1)
+
+      else
+         
+         do i=1,t-1
+            R(i,t) = ddot(Nr,Q(1,i),1,A(1,t),1)
+            call daxpy(Nr,-R(i,t),Q(1,i),1,A(1,t),1)
+         end do
+
+         call dcopy(Nr,A(1,t),1,Q(1,t),1)
+         R(t,t) = dnrm2(Nr,Q(1,t),1)
+
+         if ( abs(R(t,t)) <= ZERO_TOL ) then
+            stop('omp: mod_GS: R is singular')
+         end if
+
+         call dscal(Nr,1.0_dblk/R(t,t),Q(1,t),1)
+
+         zt = ddot(Nr,Q(1,t),1,rhs(1),1)
+         call daxpy(Nr,-zt,Q(1,t),1,rhs(1),1)
+
+      end if
+
+   end subroutine mod_GS
    ! }}}
 
    ! check_recovery

@@ -1,4 +1,4 @@
-function [x] = back_subs(R,b)
+function [x] = back_subs(R,b,stop_ind)
 % back_subs - perform backward substitution on an upper trapezoidal matrix
 %             this algorithm assumes that R is ''tall and skinny'', meaning
 %             that num_rows >= num_cols.
@@ -26,7 +26,11 @@ function [x] = back_subs(R,b)
 ZERO_TOL = 10^(-14);
 
 [m,n] = size(R);
-minmn = min([m,n]);
+if nargin >= 3
+   minmn = stop_ind;
+else
+   minmn = min([m,n]);
+end
 
 x = zeros([n 1]);
 

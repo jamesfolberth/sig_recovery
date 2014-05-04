@@ -904,7 +904,7 @@ module compla
       row_fin: do j=Nc-blk_size*s,1,-1
          ! zero on diagonal
          if (abs(U(j,j)) <= ZERO_TOL) then
-            print *, "error: compla.f08: back_solve: input matrix is singular to tolerance"
+            print *, "error: compla.f08: back_solve_blk: input matrix is singular to tolerance"
             stop
          end if
 

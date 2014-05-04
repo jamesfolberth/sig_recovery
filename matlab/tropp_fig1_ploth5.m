@@ -46,6 +46,6 @@ legend(sprintf('m=%d',m_vec(1)),...
        sprintf('m=%d',m_vec(5)),...
        'Location','SouthEast');
 
-% TODO call matlab2tikz or whatever
+print('../figures/tropp_fig1.png','-dpng')
 
 end % tropp_fig1_ploth5

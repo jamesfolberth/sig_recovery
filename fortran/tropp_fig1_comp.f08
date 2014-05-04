@@ -27,8 +27,8 @@ program tropp_fig1_comp
 
    ! qrappendcol cannot handle short and wide matrices
    ! so we must start at the maximum value of m (corresonds to square Phi_t)
-   !N_vec = ceiling(linspace(36.0_dblk,dble(d),ceiling(real((real(d)-1_dblk)/5_dblk))))
-   N_vec = ceiling(linspace(1.0_dblk,dble(d),ceiling(real((real(d)-1_dblk)/5_dblk))))
+   N_vec = ceiling(linspace(36.0_dblk,dble(d),ceiling(real((real(d)-1_dblk)/5_dblk))))
+   !N_vec = ceiling(linspace(1.0_dblk,dble(d),ceiling(real((real(d)-1_dblk)/5_dblk))))
 
    allocate(percent_recovered(size(N_vec),size(m_vec)))
    allocate(s(d),s_hat(d))
