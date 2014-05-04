@@ -1427,15 +1427,15 @@ module compla
    end function linspace
 
    function eye(Nr,Nc)
-      integer (kind=4), intent(in) :: Nr,Nc
-      real (kind=8), allocatable :: eye(:,:)
+      integer (kind=intk), intent(in) :: Nr,Nc
+      real (kind=dblk), allocatable :: eye(:,:)
 
-      integer (kind=4) :: i
+      integer (kind=intk) :: i
 
       allocate(eye(Nr,Nc))
-      eye = 0
-      do i=1,min(Nr,Nc)
-         eye(i,i) = 1d0
+      eye = 0.0_dblk
+      do i=1_intk,min(Nr,Nc)
+         eye(i,i) = 1.0_dblk
       end do
 
    end function eye

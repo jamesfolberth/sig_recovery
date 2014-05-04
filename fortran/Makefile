@@ -10,7 +10,7 @@ LDLIBS= -lsatlas -L/opt/hdf5/lib -lhdf5_fortran
 INC= -I/opt/hdf5/include
 LDADDPATH= -Wl,-rpath=/opt/hdf5/lib
 
-all: compla.o tropp_fig2_comp
+all: compla.o test_tropp_thm2
 
 compla.o: compla.f08
 	$(FORT) -c compla.f08 $(FORTOPTS) $(LDLIBS) $(INC) $(LDADDPATH)
@@ -32,6 +32,13 @@ tropp_fig2_comp: tropp_fig2_comp.f08 compla.o omp.o force
 	$(FORT) -c tropp_fig2_comp.f08 $(FORTOPS) $(INC)
 	$(FORT) -o tropp_fig2_comp $(FORTOPTS) $(LDLIBS) $(LDADDPATH) tropp_fig2_comp.o compla.o omp.o
 	./tropp_fig2_comp
+
+test_tropp_thm2: test_tropp_thm2.f08 compla.o omp.o force
+	$(FORT) -c test_tropp_thm2.f08 $(FORTOPS) $(INC)
+	$(FORT) -o test_tropp_thm2 $(FORTOPTS) $(LDLIBS) $(LDADDPATH) test_tropp_thm2.o compla.o omp.o
+	./test_tropp_thm2
+
+
 
 # phony target to force make to build targets that depend on force
 force:

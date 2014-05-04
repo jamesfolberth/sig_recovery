@@ -6,4 +6,5 @@
 fortran/test
 fortran/tropp_fig1_comp
 fortran/tropp_fig2_comp
+fortran/test_tropp_thm2
 data/*
