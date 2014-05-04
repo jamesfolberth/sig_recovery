@@ -10,7 +10,7 @@ LDLIBS= -lsatlas -L/opt/hdf5/lib -lhdf5_fortran
 INC= -I/opt/hdf5/include
 LDADDPATH= -Wl,-rpath=/opt/hdf5/lib
 
-all: compla.o tropp_fig1_comp
+all: compla.o tropp_fig2_comp
 
 compla.o: compla.f08
 	$(FORT) -c compla.f08 $(FORTOPTS) $(LDLIBS) $(INC) $(LDADDPATH)
