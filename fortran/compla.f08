@@ -756,10 +756,6 @@ module compla
       m = size(R,1)
       n = size(R,2)
       
-      if ( n > m ) then
-         stop('compla: qrappendcol: num cols must be less than num rows on entry')
-      end if
-
       ! Do QR on a vector (appending col to empty matrix)
       if ( insert_ind == 1 ) then
          allocate(wrk(m,1))

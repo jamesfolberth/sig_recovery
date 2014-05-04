@@ -28,6 +28,11 @@ tropp_fig1_comp: tropp_fig1_comp.f08 compla.o omp.o force
 	$(FORT) -o tropp_fig1_comp $(FORTOPTS) $(LDLIBS) $(LDADDPATH) tropp_fig1_comp.o compla.o omp.o
 	./tropp_fig1_comp
 
+tropp_fig2_comp: tropp_fig2_comp.f08 compla.o omp.o force
+	$(FORT) -c tropp_fig2_comp.f08 $(FORTOPS) $(INC)
+	$(FORT) -o tropp_fig2_comp $(FORTOPTS) $(LDLIBS) $(LDADDPATH) tropp_fig2_comp.o compla.o omp.o
+	./tropp_fig2_comp
+
 # phony target to force make to build targets that depend on force
 force:
 

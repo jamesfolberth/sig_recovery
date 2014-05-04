@@ -60,7 +60,7 @@ module omp
          call qrappendcol(Q,R,t,Phi(:,Lambda(t)))
          call dgemv('T',N,N,1.0_dblk,Q,N,v,1,0.0_dblk,rhs,1)
          call dcopy(t,rhs,1,x,1)
-         call back_solve_blk(R,x,t)
+         call back_solve_blk(R,x,min(t,size(R,1)))
 
          ! 5 - update approximation and residual
          call dgemv('N',N,t,1.0_dblk,Phi_t,N,x,1,0.0_dblk,a,1)
