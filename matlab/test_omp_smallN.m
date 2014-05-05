@@ -37,14 +37,14 @@ function [] = test_omp_smallN()
 
 
 %% General parameters
-d = 20; % signal length
+d = 256; % signal length
 delta = 0.35; % 0 < delta < 0.36, 1-2*delta <= OMP recovery probability
 K = 5; %For our particular choices, K<=6.7874 is good.  See GC.pdf
 
 
 %% Generate reference signal and sparsify
 m = ceil((1-0.95)*d); % sparsity level
-m = 2
+m = 10
 % reference signal
 s_full = 2*rand([d 1])-1; % uniform distribution on [-1,1]
 num_remove_inds = d-m;
@@ -57,7 +57,7 @@ s(sparse_inds) = s_full(sparse_inds); % sparse reference signal
 
 %% Measurment vectors
 %N = ceil(K*m*log(d/delta)); % N from Thm 2 of Tropp 2007
-N = 18
+N = 1
 
 mu_Phi = zeros([N d]); % mean
 mu_Sigma = 1/N*eye([d d]); % covariance

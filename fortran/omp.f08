@@ -24,6 +24,13 @@ module omp
       N = size(Phi,1)
       d = size(Phi,2)
 
+      if ( m > N ) then
+         ! if number of nonzeros is greader than number of samples
+         ! OMP will fail with probability 1
+         call dscal(d,0.0_dblk,s_hat,1)
+         return
+      end if
+
       if ( realloc ) then
          if ( allocated(Q) ) then
             deallocate(Q,R,Phi_t,resid,Lambda,temp,rhs,x,a,z,cols)
